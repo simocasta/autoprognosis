@@ -107,6 +107,7 @@ def is_app_server_running(app_path: Path) -> bool:
     return False
 
 
+@st.cache_data
 def start_app_server(app_path: Path, daemon: bool = False) -> None:
     return run_server_streamlit(app_path)
 
