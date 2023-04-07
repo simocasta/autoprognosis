@@ -3,6 +3,7 @@ import multiprocessing
 import os
 from pathlib import Path
 import re
+import streamlit as st
 
 # autoprognosis absolute
 from autoprognosis.deploy.utils import get_ports
