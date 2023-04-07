@@ -26,7 +26,7 @@ regexp = "[%s]{%d,}" % (chars, shortest_run)
 regexp_b = regexp.encode()
 pattern = re.compile(regexp_b)
 
-
+@st.cache_data #clear cache for StreamLit
 def load_depends(app_path: Path) -> None:
     seen = set()
     with open(app_path, "rb") as f:
@@ -108,7 +108,6 @@ def is_app_server_running(app_path: Path) -> bool:
     return False
 
 
-@st.cache_data #clear cache for StreamLit
 def start_app_server(app_path: Path, daemon: bool = False) -> None:
     return run_server_streamlit(app_path)
 
