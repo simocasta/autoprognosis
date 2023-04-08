@@ -5,6 +5,7 @@ from typing import Any, Union
 # third party
 import cloudpickle
 import pandas as pd
+import streamlit as st
 
 
 def save(model: Any) -> bytes:
