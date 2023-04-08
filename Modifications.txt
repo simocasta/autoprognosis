@@ -1,0 +1,5 @@
+autprognosis.deploy.run
+
+I have added the following code to allow clearing cache when executing app on StreamLit Share
+
+@st.cache_data #clear cache for StreamLit
