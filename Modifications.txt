@@ -2,7 +2,7 @@ autprognosis.deploy.run
 
 I have added the following code to allow clearing cache when executing app on StreamLit Share
 
-@st.cache(allow_output_mutation=True)@st.cache_data #clear cache for StreamLit
+@st.cache_data() #clear cache for StreamLit
 
 _____________________________________________
 
@@ -10,6 +10,6 @@ autoprognosis.utils.serilization
 
 I have added:
 
-@st.cache(allow_output_mutation=True)
+@st.cache_data()
 
 before function load_model_from_file
