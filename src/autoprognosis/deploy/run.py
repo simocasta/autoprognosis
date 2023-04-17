@@ -26,7 +26,6 @@ regexp = "[%s]{%d,}" % (chars, shortest_run)
 regexp_b = regexp.encode()
 pattern = re.compile(regexp_b)
 
-@st.cache_data
 def load_depends(app_path: Path) -> None:
     seen = set()
     with open(app_path, "rb") as f:
