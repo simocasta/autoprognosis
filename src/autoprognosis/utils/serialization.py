@@ -38,7 +38,7 @@ def save_model_to_file(path: Union[str, Path], model: Any) -> Any:
     return save_to_file(path, model)
 
 
-@st.cache_data
+@st.cache_resource
 def load_model_from_file(path: Union[str, Path]) -> Any:
     return load_from_file(path)
 

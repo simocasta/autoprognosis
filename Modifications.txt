@@ -10,6 +10,6 @@ autoprognosis.utils.serilization
 
 I have added:
 
-@st.cache_data
+@st.cache_resource
 
 before function load_model_from_file
