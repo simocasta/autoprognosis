@@ -52,7 +52,7 @@ def classification_dashboard(
             List of features where to plot alternative values. Example: if treatment == 0, it will plot alternative treatment == 1 as well, as a comparison.
     """
 
-    #st.set_page_config(layout="wide", page_title=title)
+    st.set_page_config(layout="wide", page_title=title)
 
     hide_footer_style = """
         <style>
@@ -92,18 +92,18 @@ def classification_dashboard(
             if item.type == "dropdown":
                 # Sort the val_range attribute for the dropdown options
                 def try_float(value):
-    		    try:
-          	        return float(value)
-    		    except ValueError:
+                    try:
+                        return float(value)
+                    except ValueError:
                         return None
 
-		def is_numeric(value):
-    		    return try_float(value) is not None
+                def is_numeric(value):
+                    return try_float(value) is not None
 
-		numerical_values = sorted([x for x in item.val_range if is_numeric(str(x))], key=try_float)
-		non_numerical_values = sorted([x for x in item.val_range if not is_numeric(str(x))])
+                numerical_values = sorted([x for x in item.val_range if is_numeric(str(x))], key=try_float)
+                non_numerical_values = sorted([x for x in item.val_range if not is_numeric(str(x))])
 
-		sorted_val_range = numerical_values + non_numerical_values
+                sorted_val_range = numerical_values + non_numerical_values
 
                 obj = st.selectbox(
                     label=item.name,
