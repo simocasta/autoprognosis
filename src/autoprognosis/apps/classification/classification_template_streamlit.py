@@ -52,7 +52,7 @@ def classification_dashboard(
             List of features where to plot alternative values. Example: if treatment == 0, it will plot alternative treatment == 1 as well, as a comparison.
     """
 
-    st.set_page_config(layout="wide", page_title=title)
+    #st.set_page_config(layout="wide", page_title=title)
 
     hide_footer_style = """
         <style>
