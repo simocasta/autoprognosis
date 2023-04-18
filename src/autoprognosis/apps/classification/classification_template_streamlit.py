@@ -92,11 +92,18 @@ def classification_dashboard(
             if item.type == "dropdown":
                 # Sort the val_range attribute for the dropdown options
                 def try_float(value):
-                    try:
-                        return float(value)
-                    except ValueError:
-                        return value
-                sorted_val_range = sorted(item.val_range, key=lambda x: (try_float(str(x)), str(x)))
+    		    try:
+          	        return float(value)
+    		    except ValueError:
+                        return None
+
+		def is_numeric(value):
+    		    return try_float(value) is not None
+
+		numerical_values = sorted([x for x in item.val_range if is_numeric(str(x))], key=try_float)
+		non_numerical_values = sorted([x for x in item.val_range if not is_numeric(str(x))])
+
+		sorted_val_range = numerical_values + non_numerical_values
 
                 obj = st.selectbox(
                     label=item.name,
