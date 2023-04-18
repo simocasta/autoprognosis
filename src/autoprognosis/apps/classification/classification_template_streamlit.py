@@ -91,7 +91,7 @@ def classification_dashboard(
                 inputs[name] = [obj]
             if item.type == "dropdown":
                 # Sort the val_range attribute for the dropdown options
-                sorted_val_range = sorted(item.val_range, key=lambda x: float(x) if isinstance(x, (int, float, str)) and str(x).replace('.', '', 1).isdigit() else x)
+                sorted_val_range = sorted(item.val_range, key=lambda x: float(str(x).replace('.', '', 1)) if isinstance(x, (int, float, str)) and str(x).replace('.', '', 1).isdigit() else str(x))
                 obj = st.selectbox(
                     label=item.name,
                     options=[val for val in sorted_val_range],
