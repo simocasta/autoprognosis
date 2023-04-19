@@ -13,3 +13,21 @@ I have added:
 @st.cache_resource
 
 before function load_model_from_file
+
+
+_____________________________________________
+
+autoprognosis.utils.data_encoder
+
+I have added at line 136:
+
+# Handle unseen labels by replacing them with a known label (e.g., the first label in the encoder's classes_)
+unseen_mask = ~target.isin(enc.classes_)
+target.loc[unseen_mask] = enc.classes_[0]
+
+
+_____________________________________________
+
+autoprognosis.apps.common.pandas_to_streamlit
+
+I have changed <20 to <10 (both)

@@ -67,7 +67,7 @@ def generate_menu(X: pd.DataFrame, checkboxes: List, sections: list) -> list:
                 column_types.append((col, dtype))
                 continue
 
-            if len(unique_vals) < 20:
+            if len(unique_vals) < 10:
                 dtype = DropdownColumn(col, unique_vals)
                 column_types.append((col, dtype))
                 continue
@@ -83,7 +83,7 @@ def generate_menu(X: pd.DataFrame, checkboxes: List, sections: list) -> list:
             minval = X[col].min()
             maxval = X[col].max()
 
-            if len(unique_vals) < 20:
+            if len(unique_vals) < 10:
                 dtype = DropdownColumn(col, unique_vals)
                 column_types.append((col, dtype))
                 continue

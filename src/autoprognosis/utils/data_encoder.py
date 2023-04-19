@@ -133,6 +133,9 @@ class EncodersCallbacks:
                 )
             else:
                 # label encoder
+                # Handle unseen labels by replacing them with a known label (e.g., the first label in the encoder's classes_)
+                unseen_mask = ~target.isin(enc.classes_)
+                target.loc[unseen_mask] = enc.classes_[0]
                 encoded = pd.DataFrame(
                     enc.transform(target),
                     columns=[col],
