@@ -26,6 +26,9 @@ unseen_mask = ~target.isin(enc.classes_)
 target.loc[unseen_mask] = enc.classes_[0]
 
 
+I have changed line 235: from <15 to <5 (to describe categorical features)
+
+
 _____________________________________________
 
 autoprognosis.apps.common.pandas_to_streamlit
