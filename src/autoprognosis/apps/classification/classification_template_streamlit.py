@@ -198,7 +198,7 @@ def classification_dashboard(
             y="Probability",
             color="Category",
             color_continuous_scale="RdBu",
-            height=600,
+            height=500,
             width=600,
         )
         fig.update_layout(
