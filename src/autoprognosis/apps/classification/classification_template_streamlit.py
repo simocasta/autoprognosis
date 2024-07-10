@@ -177,6 +177,9 @@ def classification_dashboard(
                     color_continuous_scale="Blues",
                     height=300,
                 )
+                fig.update_layout(
+                    font=dict(size=16)  # Adjust the font size as needed
+                )
                 st.markdown(
                     f"<h3 style='color:#000;'>Feature importance for the '{reason}' risk plot using {pretty_name}</h3>", 
                     unsafe_allow_html=True
@@ -190,21 +193,37 @@ def classification_dashboard(
 
         vals = {
             "Probability": predictions.values.squeeze(),
-            "Category": predictions.columns,
+            "Outcome Class": predictions.columns,
         }
+
+        # Convert Outcome Class to a list if it is not already
+        outcome_classes = list(vals["Outcome Class"])
+
+        # Map the outcome classes to the desired legend labels
+        outcome_classes_mapped = [ 
+            {0: "0: No progression", 1: "1: Pain-only progression", 2: "2: Radiographic-only progression", 3: "3: Pain and radiographic progression"}.get(int(x), x) 
+            for x in outcome_classes
+        ]
+
+        vals["Outcome Class"] = outcome_classes_mapped
+        
+        # Define custom color sequence
+        custom_color_sequence = px.colors.sequential.Rainbow
+        
         fig = px.bar(
             vals,
-            x="Category",
+            x="Outcome Class",
             y="Probability",
-            color="Category",
-            color_continuous_scale="RdBu",
-            height=500,
+            color="Outcome Class",
+            color_discrete_sequence=custom_color_sequence,
+            height=450,
             width=600,
         )
         fig.update_layout(
-            xaxis_title="Category",
+            xaxis_title="Outcome Class",
             yaxis_title="Probability",
-            legend_title="Categories",
+            legend_title="Outcome Classes",
+            font=dict(size=16)  # Adjust the font size as needed
         )
 
         st.markdown("<h3 style='color:#000;'>Predictions</h3>", unsafe_allow_html=True)
@@ -218,29 +237,7 @@ def classification_dashboard(
         df = encoders_ctx.encode(raw_df)
         
         # Add a styled button for calculating the risk
-        button_style = """
-        <style>
-        div.stButton button {
-            background-color: #1f77b4 !important;
-            color: white !important;
-            padding: 20px 40px !important;
-            font-size: 36px !important; /* Increase the text size */
-            border-radius: 12px !important;
-            border: none !important;
-            cursor: pointer !important;
-            box-shadow: 0 6px #999 !important;
-        }
-        div.stButton button:hover {
-            background-color: #0056b3 !important;
-        }
-        div.stButton button:active {
-            background-color: #0056b3 !important;
-            box-shadow: 0 4px #666 !important;
-            transform: translateY(2px) !important;
-        }
-        </style>
-        """
-        # st.markdown(button_style, unsafe_allow_html=True)
-        if st.button("Show Predictions ✋"):
+        
+        if st.button("Show Predictions ✋", help='Click to show predictions'):
             update_predictions(raw_df, df)
             update_interpretation(df)
