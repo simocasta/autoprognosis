@@ -199,16 +199,23 @@ def classification_dashboard(
         # Convert Outcome Class to a list if it is not already
         outcome_classes = list(vals["Outcome Class"])
 
-        # Map the outcome classes to the desired legend labels
-        outcome_classes_mapped = [ 
-            {0: "0: No progression", 1: "1: Pain-only progression", 2: "2: Radiographic-only progression", 3: "3: Pain and radiographic progression"}.get(int(x), x) 
-            for x in outcome_classes
-        ]
+        if len(outcome_classes) == 2:
+            # Map the outcome classes to the desired legend labels for 2 classes
+            outcome_classes_mapped = [ 
+                {0: "0: No progression", 1: "1: Progression"}.get(int(x), x) 
+                for x in outcome_classes
+            ]
+        else:
+            # Map the outcome classes to the desired legend labels for 4 classes
+            outcome_classes_mapped = [ 
+                {0: "0: No progression", 1: "1: Pain-only progression", 2: "2: Radiographic-only progression", 3: "3: Pain and radiographic progression"}.get(int(x), x) 
+                for x in outcome_classes
+            ]
 
         vals["Outcome Class"] = outcome_classes_mapped
         
         # Define custom color sequence
-        custom_color_sequence = px.colors.sequential.Rainbow
+        custom_color_sequence = px.colors.qualitative.Set1
         
         fig = px.bar(
             vals,
