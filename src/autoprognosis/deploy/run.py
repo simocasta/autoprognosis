@@ -44,16 +44,24 @@ def load_depends(app_path: Path) -> None:
                 Plugins().get_any_type(plugin)
 
 
-def run_server_streamlit(app_path: Path, port: int = 9000) -> None:
+def run_server_streamlit(app_path: Path, study_name: str, port: int = 9000) -> None:
     load_depends(app_path)
 
     app_params = load_model_from_file(app_path)
 
     if app_params["type"] == "risk_estimation":
-        # autoprognosis absolute
-        from autoprognosis.apps.survival_analysis.survival_analysis_template_streamlit import (
-            survival_analysis_dashboard,
-        )
+        if study_name == "knee_oa":
+            from autoprognosis.apps.survival_analysis.survival_analysis_template_streamlit_knee_oa import (
+                survival_analysis_dashboard,
+            )
+        elif study_name == "camkit":
+            from autoprognosis.apps.survival_analysis.survival_analysis_template_streamlit_camkit import (
+                survival_analysis_dashboard,
+            )
+        else:
+            from autoprognosis.apps.survival_analysis.survival_analysis_template_streamlit import (
+                survival_analysis_dashboard,
+            )
 
         app = survival_analysis_dashboard(
             app_params["title"],
@@ -68,10 +76,18 @@ def run_server_streamlit(app_path: Path, port: int = 9000) -> None:
             app_params["auth"],
         )
     elif app_params["type"] == "classification":
-        # autoprognosis absolute
-        from autoprognosis.apps.classification.classification_template_streamlit import (
-            classification_dashboard,
-        )
+        if study_name == "knee_oa":
+            from autoprognosis.apps.classification.classification_template_streamlit_knee_oa import (
+                classification_dashboard,
+            )
+        elif study_name == "camkit":
+            from autoprognosis.apps.classification.classification_template_streamlit_camkit import (
+                classification_dashboard,
+            )
+        else:
+            from autoprognosis.apps.classification.classification_template_streamlit import (
+                classification_dashboard,
+            )
 
         app = classification_dashboard(
             app_params["title"],
@@ -83,7 +99,7 @@ def run_server_streamlit(app_path: Path, port: int = 9000) -> None:
             app_params["plot_alternatives"],
         )
     else:
-        raise RuntimeError(f"unsupported task {app.type}")
+        raise RuntimeError(f"unsupported task {app_params['type']}")
 
 
 def get_app_name(app_path: Path) -> str:
@@ -107,8 +123,8 @@ def is_app_server_running(app_path: Path) -> bool:
     return False
 
 
-def start_app_server(app_path: Path, daemon: bool = False) -> None:
-    return run_server_streamlit(app_path)
+def start_app_server(app_path: Path, study_name: str, daemon: bool = False) -> None:
+    return run_server_streamlit(app_path, study_name)
 
 
 def stop_app_server(app_path: Path) -> None:
