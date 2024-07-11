@@ -246,5 +246,6 @@ def classification_dashboard(
         # Add a styled button for calculating the risk
         
         if st.button("Show Predictions ✋", help='Click to show predictions'):
-            update_predictions(raw_df, df)
-            update_interpretation(df)
+            with st.spinner('Processing...'):
+                update_predictions(raw_df, df)
+                update_interpretation(df)
