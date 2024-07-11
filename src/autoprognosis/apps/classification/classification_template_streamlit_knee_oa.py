@@ -113,7 +113,7 @@ def classification_dashboard(
                 min_value = item.min if name != "Age" else 45
                 max_value = item.max if name != "Age" else max_value_adjusted
                 obj = st.slider(
-                    item.name,
+                    name,
                     min_value=min_value,
                     value=item.min,
                     max_value=max_value,
@@ -131,7 +131,7 @@ def classification_dashboard(
                 else:
                     max_value = float(max_value_adjusted)
                 obj = st.slider(
-                    item.name,
+                    name,
                     min_value=min_value,
                     value=float(item.min),
                     max_value=max_value,
