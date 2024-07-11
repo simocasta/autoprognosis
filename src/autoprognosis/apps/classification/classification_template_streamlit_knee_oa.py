@@ -117,7 +117,7 @@ def classification_dashboard(
                     min_value=min_value,
                     value=item.min,
                     max_value=max_value,
-                    step=5
+                    step=1
                 )
                 inputs[name] = [obj]
             elif item.type == "slider_float":
