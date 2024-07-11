@@ -33,26 +33,7 @@ def classification_dashboard(
     menu_components: List,
     plot_alternatives: Dict,
 ) -> Any:
-    """
-    Streamlit helper for rendering the dashboard, using serialized models and menu components.
-
-    Args:
-        title:
-            Page title
-        banner_title:
-            The title used in the banner.
-        models:
-            The models used for evaluation and plots.
-        column_types: List
-            List of the dataset features and their distribution.
-        encoders_ctx: EncodersCallbacks,
-            List of encoders/decoders for the menu values < - > model input values.
-        menu_components: List
-            Type of menu item for each feature: checkbox, dropdown etc.
-        plot_alternatives: list
-            List of features where to plot alternative values. Example: if treatment == 0, it will plot alternative treatment == 1 as well, as a comparison.
-    """
-
+    
     hide_footer_style = """
         <style>
         .reportview-container .main footer {visibility: hidden;}
@@ -74,70 +55,87 @@ def classification_dashboard(
 
     inputs = {}
     columns = []
+    missing_count = 0
+
     with menu:
         st.markdown("<h3 style='color:#000;'>Patient info</h3>", unsafe_allow_html=True)
         
+        col1, col2 = st.columns([4, 2])
+        with col2:
+            st.markdown("<h5 style='font-size:14px;'>Missing?</h5>", unsafe_allow_html=True)
+        
         for name, item in menu_components:
             columns.append(name)
-            if item.type == "checkbox":
-                obj = st.checkbox(
-                    label=item.name,
-                )
-                inputs[name] = [obj]
-            if item.type == "dropdown":
-                if name in ["KL grade", "Medial JSN", "Lateral JSN"]:
-                    sorted_val_range = [0, 1, 2, 3]
+        
+            col1, col2 = st.columns([4, 2])
+        
+            with col2:
+                missing_checkbox = st.checkbox("", key=f"{name}_missing")
+        
+            with col1:
+                if missing_checkbox:
+                    obj = np.nan
+                    missing_count += 1
+                    st.markdown(f"<p style='font-family: Arial, sans-serif; font-size: 14px;'>{name}</p>", unsafe_allow_html=True)  # Keep the variable name displayed
                 else:
-                    # Sort the val_range attribute for the dropdown options
-                    def try_float(value):
-                        try:
-                            return float(value)
-                        except ValueError:
-                            return None
-
-                    def is_numeric(value):
-                        return try_float(value) is not None
-
-                    numerical_values = sorted([x for x in item.val_range if is_numeric(str(x))], key=try_float)
-                    non_numerical_values = sorted([x for x in item.val_range if not is_numeric(str(x))])
-
-                    sorted_val_range = numerical_values + non_numerical_values
-
-                obj = st.selectbox(
-                    label=item.name,
-                    options=[val for val in sorted_val_range],
-                )
-                inputs[name] = [obj]
-            elif item.type == "slider_integer":
-                max_value_adjusted = ((item.max // 5) + 1) * 5
-                min_value = item.min if name != "Age" else 45
-                max_value = item.max if name != "Age" else max_value_adjusted
-                obj = st.slider(
-                    name,
-                    min_value=min_value,
-                    value=item.min,
-                    max_value=max_value,
-                    step=1
-                )
-                inputs[name] = [obj]
-            elif item.type == "slider_float":
-                max_value_adjusted = ((int(item.max) // 5) + 1) * 5
-                min_value = 0.0
-                step_value = 0.1
-                if name == "WOMAC Pain Score":
-                    max_value = 20.0
-                elif name == "WOMAC Disability Score":
-                    max_value = 68.0
-                else:
-                    max_value = float(max_value_adjusted)
-                obj = st.slider(
-                    name,
-                    min_value=min_value,
-                    value=float(item.min),
-                    max_value=max_value,
-                    step=step_value,
-                )
-                inputs[name] = [obj]
+                    if item.type == "checkbox":
+                        obj = st.checkbox(label=name)
+                        
+                    elif item.type == "dropdown":
+                        if name in ["KL grade", "Medial JSN", "Lateral JSN"]:
+                            sorted_val_range = [0, 1, 2, 3]
+                        else:
+                            # Sort the val_range attribute for the dropdown options
+                            def try_float(value):
+                                try:
+                                    return float(value)
+                                except ValueError:
+                                    return None
+        
+                            def is_numeric(value):
+                                return try_float(value) is not None
+        
+                            numerical_values = sorted([x for x in item.val_range if is_numeric(str(x))], key=try_float)
+                            non_numerical_values = sorted([x for x in item.val_range if not is_numeric(str(x))])
+        
+                            sorted_val_range = numerical_values + non_numerical_values
+        
+                        obj = st.selectbox(
+                            label=name,
+                            options=[val for val in sorted_val_range],
+                        )
+                           
+                    elif item.type == "slider_integer":
+                        max_value_adjusted = ((item.max // 5) + 1) * 5
+                        min_value = item.min if name != "Age" else 45
+                        max_value = item.max if name != "Age" else max_value_adjusted
+                        obj = st.slider(
+                            name,
+                            min_value=min_value,
+                            value=item.min,
+                            max_value=max_value,
+                            step=1
+                        )
+        
+                    elif item.type == "slider_float":
+                        max_value_adjusted = ((int(item.max) // 5) + 1) * 5
+                        min_value = 0.0
+                        step_value = 0.1
+                        if name == "WOMAC Pain Score":
+                            max_value = 20.0
+                        elif name == "WOMAC Disability Score":
+                            max_value = 68.0
+                        else:
+                            max_value = float(max_value_adjusted)
+                        obj = st.slider(
+                            name,
+                            min_value=min_value,
+                            value=float(item.min),
+                            max_value=max_value,
+                            step=step_value,
+                        )
+        
+            inputs[name] = [obj]
 
     def update_interpretation(df: pd.DataFrame) -> px.imshow:
         for reason in models:
@@ -247,5 +245,8 @@ def classification_dashboard(
         
         if st.button("Show Predictions ✋", help='Click to show predictions'):
             with st.spinner('Processing...'):
-                update_predictions(raw_df, df)
-                update_interpretation(df)
+                if missing_count > 3:
+                    st.error("Too many missing values")
+                else:
+                    update_predictions(raw_df, df)
+                    update_interpretation(df)
