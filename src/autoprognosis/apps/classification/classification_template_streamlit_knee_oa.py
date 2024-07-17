@@ -49,7 +49,7 @@ def classification_dashboard(
         unsafe_allow_html=True,
     )
 
-    CAUTION_STATEMENT = "This tool predicts your most likely outcomes based on current knowledge and data, but will never provide a 100% accurate prediction for any individual. We recommend that you discuss the results with your own specialist in a more personalised context."
+    CAUTION_STATEMENT = "This application is a prototype for demonstrative purposes only. It is NOT intended for use on any individual, including in any clinical or medical setting."
 
     menu, predictions = st.columns([1, 4])
 
@@ -235,7 +235,7 @@ def classification_dashboard(
         st.plotly_chart(fig, use_container_width=True)
 
     with predictions:
-        st.markdown("<h3 style='color:#000;'>Risk estimation</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='color:#000;'>Predictions</h3>", unsafe_allow_html=True)
         st.markdown(CAUTION_STATEMENT)
 
         raw_df = pd.DataFrame.from_dict(inputs)
