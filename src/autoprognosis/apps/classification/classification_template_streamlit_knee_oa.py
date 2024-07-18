@@ -65,6 +65,10 @@ def classification_dashboard(
             st.markdown("<h5 style='font-size:14px;'>Missing?</h5>", unsafe_allow_html=True)
         
         for name, item in menu_components:
+            if name in ["WOMAC Pain Score", "WOMAC Disability Score"]:
+                inputs[name] = [np.nan]
+                continue
+            
             columns.append(name)
         
             col1, col2 = st.columns([4, 2])
@@ -245,7 +249,7 @@ def classification_dashboard(
         
         if st.button("Show Predictions ✋", help='Click to show predictions'):
             with st.spinner('Processing...'):
-                if missing_count > 3:
+                if missing_count > 2:
                     st.error("Too many missing values")
                 else:
                     update_predictions(raw_df, df)
