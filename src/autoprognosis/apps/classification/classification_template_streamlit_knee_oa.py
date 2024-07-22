@@ -65,10 +65,6 @@ def classification_dashboard(
             st.markdown("<h5 style='font-size:14px;'>Missing?</h5>", unsafe_allow_html=True)
         
         for name, item in menu_components:
-            if name in ["WOMAC Pain Score", "WOMAC Disability Score"]:
-                inputs[name] = [np.nan]
-                continue
-            
             columns.append(name)
         
             col1, col2 = st.columns([4, 2])
@@ -239,7 +235,7 @@ def classification_dashboard(
         st.plotly_chart(fig, use_container_width=True)
 
     with predictions:
-        st.markdown("<h3 style='color:#000;'>Predictions</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='color:#000;'>Risk estimation</h3>", unsafe_allow_html=True)
         st.markdown(CAUTION_STATEMENT)
 
         raw_df = pd.DataFrame.from_dict(inputs)
@@ -249,7 +245,7 @@ def classification_dashboard(
         
         if st.button("Show Predictions ✋", help='Click to show predictions'):
             with st.spinner('Processing...'):
-                if missing_count > 2:
+                if missing_count > 3:
                     st.error("Too many missing values")
                 else:
                     update_predictions(raw_df, df)
