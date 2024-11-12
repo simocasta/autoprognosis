@@ -61,16 +61,16 @@ def classification_dashboard(
         st.markdown("<h3 style='color:#000;'>Patient info</h3>", unsafe_allow_html=True)
         
         col1, col2 = st.columns([4, 2])
-        with col2:
-            st.markdown("<h5 style='font-size:14px;'>Missing?</h5>", unsafe_allow_html=True)
+        # with col2:
+        #     st.markdown("<h5 style='font-size:14px;'>Missing?</h5>", unsafe_allow_html=True)
         
         for name, item in menu_components:
             columns.append(name)
         
             col1, col2 = st.columns([4, 2])
         
-            with col2:
-                missing_checkbox = st.checkbox("", key=f"{name}_missing")
+            # with col2:
+            #     missing_checkbox = st.checkbox("", key=f"{name}_missing")
         
             with col1:
                 if missing_checkbox:
