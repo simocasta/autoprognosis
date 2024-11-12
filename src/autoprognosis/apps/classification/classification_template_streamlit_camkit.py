@@ -67,7 +67,7 @@ def classification_dashboard(
         for name, item in menu_components:
             columns.append(name)
         
-            # col1, col2 = st.columns([4, 2])
+            col1, col2 = st.columns([4, 2])
         
             with col2:
                 missing_checkbox = st.checkbox("", key=f"{name}_missing")
