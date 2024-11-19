@@ -255,7 +255,7 @@ def evaluate_estimator(
         Y_test = Y.loc[Y.index[test_index]]
 
         if pretrained:
-            model = ecopy.deepcopy(estimator)
+            model = copy.deepcopy(estimator)
         else:
             model = copy.deepcopy(estimator)
             model.fit(X_train, Y_train)
