@@ -84,6 +84,10 @@ def run_server_streamlit(app_path: Path, study_name: str, port: int = 9000) -> N
             from autoprognosis.apps.classification.classification_template_streamlit_camkit import (
                 classification_dashboard,
             )
+        elif study_name == "orthobots":
+            from autoprognosis.apps.classification.classification_template_streamlit_orthobots import (
+                classification_dashboard,
+            )
         else:
             from autoprognosis.apps.classification.classification_template_streamlit import (
                 classification_dashboard,
