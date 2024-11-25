@@ -188,12 +188,19 @@ def classification_dashboard(
 
         # Convert Outcome Class to a list if it is not already
         outcome_classes = list(vals["Outcome Class"])
-
-        # Map the outcome classes to the desired legend labels for 2 classes
-        outcome_classes_mapped = [ 
-            {0: "0: Normal", 1: "1: Hernia", 2: "2: Spondylolisthesis"}.get(int(x), x) 
-            for x in outcome_classes
-        ]
+        
+        if len(outcome_classes) == 2:
+            # Map the outcome classes to the desired legend labels for 2 classes
+            outcome_classes_mapped = [ 
+                {0: "0: Normal", 1: "1: Abnormal"}.get(int(x), x) 
+                for x in outcome_classes
+            ]
+        else:
+            # Map the outcome classes to the desired legend labels for 4 classes
+            outcome_classes_mapped = [ 
+                {0: "0: Normal", 1: "1: Hernia", 2: "2: Spondylolisthesis"}.get(int(x), x) 
+                for x in outcome_classes
+            ]
 
         vals["Outcome Class"] = outcome_classes_mapped
         
