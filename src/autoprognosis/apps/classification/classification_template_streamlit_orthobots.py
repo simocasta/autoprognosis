@@ -190,7 +190,7 @@ def classification_dashboard(
         vals["Class"] = outcome_classes_mapped
         
         # Define custom color sequence
-        custom_color_sequence = px.colors.qualitative.Set2
+        custom_color_sequence = px.colors.qualitative.Set1
         
         fig = px.bar(
             vals,
