@@ -61,71 +61,56 @@ def classification_dashboard(
     with menu:
         st.markdown("<h3 style='color:#000;'>Patient info</h3>", unsafe_allow_html=True)
         
-        col1, col2 = st.columns([4, 2])
-        with col2:
-            st.markdown("<h5 style='font-size:14px;'>Missing?</h5>", unsafe_allow_html=True)
-        
         for name, item in menu_components:
             columns.append(name)
-        
-            col1, col2 = st.columns([4, 2])
-        
-            with col2:
-                missing_checkbox = st.checkbox("", key=f"{name}_missing")
-        
-            with col1:
-                if missing_checkbox:
-                    obj = np.nan
-                    missing_count += 1
-                    st.markdown(f"<p style='font-family: Arial, sans-serif; font-size: 14px;'>{name}</p>", unsafe_allow_html=True)  # Keep the variable name displayed
-                else:
-                    if item.type == "checkbox":
-                        obj = st.checkbox(label=name)
-                        
-                    elif item.type == "dropdown":
-                        # Sort the val_range attribute for the dropdown options
-                        def try_float(value):
-                            try:
-                                return float(value)
-                            except ValueError:
-                                return None
-    
-                        def is_numeric(value):
-                            return try_float(value) is not None
-    
-                        numerical_values = sorted([x for x in item.val_range if is_numeric(str(x))], key=try_float)
-                        non_numerical_values = sorted([x for x in item.val_range if not is_numeric(str(x))])
-    
-                        sorted_val_range = numerical_values + non_numerical_values
-        
-                        obj = st.selectbox(
-                            label=name,
-                            options=[val for val in sorted_val_range],
-                        )
-                           
-                    elif item.type == "slider_integer":
-                        min_value = item.min
-                        max_value = item.max
-                        obj = st.slider(
-                            name,
-                            min_value=min_value,
-                            value=item.min,
-                            max_value=max_value,
-                            step=1
-                        )
-        
-                    elif item.type == "slider_float":
-                        max_value_adjusted = int(item.max)
-                        min_value = 0.0
-                        step_value = 0.1
-                        max_value = float(max_value_adjusted)
-                        obj = st.slider(
-                            name,
-                            min_value=min_value,
-                            value=float(item.min),
-                            max_value=max_value,
-                            step=step_value,
-                        )
+
+            if item.type == "checkbox":
+                obj = st.checkbox(label=name)
+                
+            elif item.type == "dropdown":
+                # Sort the val_range attribute for the dropdown options
+                def try_float(value):
+                    try:
+                        return float(value)
+                    except ValueError:
+                        return None
+
+                def is_numeric(value):
+                    return try_float(value) is not None
+
+                numerical_values = sorted([x for x in item.val_range if is_numeric(str(x))], key=try_float)
+                non_numerical_values = sorted([x for x in item.val_range if not is_numeric(str(x))])
+
+                sorted_val_range = numerical_values + non_numerical_values
+
+                obj = st.selectbox(
+                    label=name,
+                    options=[val for val in sorted_val_range],
+                )
+                   
+            elif item.type == "slider_integer":
+                min_value = item.min
+                max_value = item.max
+                obj = st.slider(
+                    name,
+                    min_value=min_value,
+                    value=item.min,
+                    max_value=max_value,
+                    step=1
+                )
+
+            elif item.type == "slider_float":
+                max_value_adjusted = int(item.max)
+                min_value = 0.0
+                step_value = 0.1
+                max_value = float(max_value_adjusted)
+                obj = st.slider(
+                    name,
+                    min_value=min_value,
+                    value=float(item.min),
+                    max_value=max_value,
+                    step=step_value,
+                )
         
             inputs[name] = [obj]
 
@@ -183,11 +168,11 @@ def classification_dashboard(
 
         vals = {
             "Probability": predictions.values.squeeze(),
-            "Outcome Class": predictions.columns,
+            "Class": predictions.columns,
         }
 
         # Convert Outcome Class to a list if it is not already
-        outcome_classes = list(vals["Outcome Class"])
+        outcome_classes = list(vals["Class"])
         
         if len(outcome_classes) == 2:
             # Map the outcome classes to the desired legend labels for 2 classes
@@ -202,24 +187,24 @@ def classification_dashboard(
                 for x in outcome_classes
             ]
 
-        vals["Outcome Class"] = outcome_classes_mapped
+        vals["Class"] = outcome_classes_mapped
         
         # Define custom color sequence
         custom_color_sequence = px.colors.qualitative.Set2
         
         fig = px.bar(
             vals,
-            x="Outcome Class",
+            x="Class",
             y="Probability",
-            color="Outcome Class",
+            color="Class",
             color_discrete_sequence=custom_color_sequence,
             height=450,
             width=600,
         )
         fig.update_layout(
-            xaxis_title="Outcome Class",
+            xaxis_title="Class",
             yaxis_title="Probability",
-            legend_title="Outcome Classes",
+            legend_title="Classes",
             font=dict(size=16)  # Adjust the font size as needed
         )
 
