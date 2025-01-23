@@ -201,8 +201,8 @@ class ClassifierStudy(Study):
         if dataset.isnull().values.any():
             if len(imputers) == 0:
                 raise RuntimeError("Please provide at least one imputation method")
-        # else:
-        #     imputers = []
+        else:
+            imputers = []
 
         drop_cols = [target]
         self.group_ids = None
