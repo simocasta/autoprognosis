@@ -141,6 +141,7 @@ class LimePlugin(ExplainerPlugin):
 
 
     def explain(self, X: pd.DataFrame) -> pd.DataFrame:
+        X = pd.DataFrame(X, columns=self.feature_names)
         X = np.asarray(X)
         results = []
 
