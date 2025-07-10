@@ -270,11 +270,7 @@ def evaluate_estimator(
     # Special handling for n_folds=1 (no cross-validation)
     if n_folds == 1:
         log.debug("n_folds=1: Evaluating on training data without cross-validation")
-        
-        # Initialize results with single values
-        for metric in clf_supported_metrics:
-            results[metric] = np.zeros(1)
-        
+               
         if pretrained:
             model = copy.deepcopy(estimator)
         else:
@@ -289,9 +285,6 @@ def evaluate_estimator(
     
     else:
         # Original cross-validation logic for n_folds >= 2
-        for metric in clf_supported_metrics:
-            results[metric] = np.zeros(n_folds)
-    
         indx = 0
         if group_ids is not None:
             skf = StratifiedGroupKFold(n_splits=n_folds, shuffle=True, random_state=seed)
