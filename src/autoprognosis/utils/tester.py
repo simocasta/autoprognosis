@@ -178,6 +178,9 @@ class classifier_metrics:
                 results[f"precision_class_{class_label}"] = precision_per_class[i]
                 results[f"recall_class_{class_label}"] = recall_per_class[i]
 
+                # Add metric to clf_supported_metrics
+                clf_supported_metrics += [f"f1_score_class_{class_label}", f"precision_class_{class_label}", f"recall_class_{class_label}"]
+
         else:
             # Calculate non-averaged F1, precision, and recall for binary task
             f1 = f1_score(y_test, y_pred, average=None, zero_division=0)
@@ -188,6 +191,10 @@ class classifier_metrics:
             results["f1_score"] = f1
             results["precision"] = precision
             results["recall"] = recall
+
+            # Add metric to clf_supported_metrics
+            clf_supported_metrics += ["f1_score", "precision", "recall"]
+            
 
         log.debug(f"evaluate_classifier: {results}")
         return results
@@ -264,12 +271,15 @@ def evaluate_estimator(
     log.debug(f"evaluate_estimator shape x:{X.shape} y:{Y.shape}")
 
     results = {}
-
     evaluator = classifier_metrics()
     
     # Special handling for n_folds=1 (no cross-validation)
     if n_folds == 1:
         log.debug("n_folds=1: Evaluating on training data without cross-validation")
+
+        # Initialize results with single values
+        for metric in clf_supported_metrics:
+            results[metric] = np.zeros(1)
                
         if pretrained:
             model = copy.deepcopy(estimator)
@@ -285,6 +295,9 @@ def evaluate_estimator(
     
     else:
         # Original cross-validation logic for n_folds >= 2
+        for metric in clf_supported_metrics:
+            results[metric] = np.zeros(n_folds)
+            
         indx = 0
         if group_ids is not None:
             skf = StratifiedGroupKFold(n_splits=n_folds, shuffle=True, random_state=seed)
