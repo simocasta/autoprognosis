@@ -222,8 +222,8 @@ def evaluate_estimator(
             - "mcc": The Matthews correlation coefficient is used in machine learning as a measure of the quality of binary and multiclass classifications. It takes into account true and false positives and negatives and is generally regarded as a balanced measure which can be used even if the classes are of very different sizes.
 
     """
-    if n_folds < 2:
-        raise ValueError("n_folds must be >= 2")
+    if n_folds < 1:
+        raise ValueError("n_folds must be >= 1")
     enable_reproducible_results(seed)
 
     X = pd.DataFrame(X).reset_index(drop=True)
@@ -237,36 +237,59 @@ def evaluate_estimator(
     results = {}
 
     evaluator = classifier_metrics()
-    for metric in clf_supported_metrics:
-        results[metric] = np.zeros(n_folds)
-
-    indx = 0
-    if group_ids is not None:
-        skf = StratifiedGroupKFold(n_splits=n_folds, shuffle=True, random_state=seed)
-    else:
-        skf = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=seed)
-
-    # group_ids is always ignored for StratifiedKFold so safe to pass None
-    for train_index, test_index in skf.split(X, Y, groups=group_ids):
-
-        X_train = X.loc[X.index[train_index]]
-        Y_train = Y.loc[Y.index[train_index]]
-        X_test = X.loc[X.index[test_index]]
-        Y_test = Y.loc[Y.index[test_index]]
-
+    
+    # Special handling for n_folds=1 (no cross-validation)
+    if n_folds == 1:
+        log.debug("n_folds=1: Evaluating on training data without cross-validation")
+        
+        # Initialize results with single values
+        for metric in clf_supported_metrics:
+            results[metric] = np.zeros(1)
+        
         if pretrained:
             model = copy.deepcopy(estimator)
         else:
             model = copy.deepcopy(estimator)
-            model.fit(X_train, Y_train)
-
-        preds = model.predict_proba(X_test)
-
-        scores = evaluator.score_proba(Y_test, preds)
+            model.fit(X, Y)
+        
+        preds = model.predict_proba(X)
+        scores = evaluator.score_proba(Y, preds)
+        
         for metric in scores:
-            results[metric][indx] = scores[metric]
-
-        indx += 1
+            results[metric][0] = scores[metric]
+    
+    else:
+        # Original cross-validation logic for n_folds >= 2
+        for metric in clf_supported_metrics:
+            results[metric] = np.zeros(n_folds)
+    
+        indx = 0
+        if group_ids is not None:
+            skf = StratifiedGroupKFold(n_splits=n_folds, shuffle=True, random_state=seed)
+        else:
+            skf = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=seed)
+    
+        # group_ids is always ignored for StratifiedKFold so safe to pass None
+        for train_index, test_index in skf.split(X, Y, groups=group_ids):
+    
+            X_train = X.loc[X.index[train_index]]
+            Y_train = Y.loc[Y.index[train_index]]
+            X_test = X.loc[X.index[test_index]]
+            Y_test = Y.loc[Y.index[test_index]]
+    
+            if pretrained:
+                model = copy.deepcopy(estimator)
+            else:
+                model = copy.deepcopy(estimator)
+                model.fit(X_train, Y_train)
+    
+            preds = model.predict_proba(X_test)
+    
+            scores = evaluator.score_proba(Y_test, preds)
+            for metric in scores:
+                results[metric][indx] = scores[metric]
+    
+            indx += 1
 
     output_clf = {}
     output_clf_str = {}
