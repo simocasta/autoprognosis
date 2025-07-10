@@ -178,7 +178,7 @@ class classifier_metrics:
                 results[f"precision_class_{class_label}"] = precision_per_class[i]
                 results[f"recall_class_{class_label}"] = recall_per_class[i]
 
-        elif n_classes == 1:
+        else:
             # Calculate non-averaged F1, precision, and recall for binary task
             f1 = f1_score(y_test, y_pred, average=None, zero_division=0)
             precision = precision_score(y_test, y_pred, average=None, zero_division=0)
