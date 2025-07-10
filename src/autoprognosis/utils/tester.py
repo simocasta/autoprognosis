@@ -103,18 +103,11 @@ class classifier_metrics:
     def score_proba(
         self, y_test: np.ndarray, y_pred_proba: np.ndarray
     ) -> Dict[str, float]:
-        
-        global clf_supported_metrics  # Declare intent to modify the global variable
-        
         if y_test is None or y_pred_proba is None:
             raise RuntimeError("Invalid input for score_proba")
 
         results = {}
         y_pred = np.argmax(np.asarray(y_pred_proba), axis=1)
-
-        # Get unique classes
-        unique_classes = np.unique(y_test)
-        n_classes = len(unique_classes)
         
         for metric in self.metrics:
             if metric == "aucprc":
@@ -169,28 +162,23 @@ class classifier_metrics:
                 raise ValueError(f"invalid metric {metric}")
 
         # Add per-class metrics
-        if n_classes > 2:
-            # Calculate per-class F1, precision, and recall
-            f1_per_class = f1_score(y_test, y_pred, average=None, zero_division=0)
-            precision_per_class = precision_score(y_test, y_pred, average=None, zero_division=0)
-            recall_per_class = recall_score(y_test, y_pred, average=None, zero_division=0)
-            
-            # Add per-class metrics to results
-            for i, class_label in enumerate(unique_classes):
-                results[f"f1_score_class_{class_label}"] = f1_per_class[i]
-                results[f"precision_class_{class_label}"] = precision_per_class[i]
-                results[f"recall_class_{class_label}"] = recall_per_class[i]
+        unique_classes = np.unique(y_test)
+        
+        f1_per_class = f1_score(y_test, y_pred, average=None, zero_division=0)
+        precision_per_class = precision_score(
+            y_test, y_pred, average=None, zero_division=0
+        )
+        recall_per_class = recall_score(y_test, y_pred, average=None, zero_division=0)
 
-        else:
-            # Calculate non-averaged F1, precision, and recall for binary task
-            f1 = f1_score(y_test, y_pred, average=None, zero_division=0)
-            precision = precision_score(y_test, y_pred, average=None, zero_division=0)
-            recall = recall_score(y_test, y_pred, average=None, zero_division=0)
-            
-            # Add non-averaged metrics to results
-            results["f1_score"] = f1
-            results["precision"] = precision
-            results["recall"] = recall
+        # Assign scores for each class present in the fold to a unique key.
+        # `unique_classes` provides the correct labels for the scores returned by `average=None`.
+        for i, class_label in enumerate(unique_classes):
+            results[f"f1_score_class_{class_label}"] = f1_per_class[i]
+            results[f"precision_class_{class_label}"] = precision_per_class[i]
+            results[f"recall_class_{class_label}"] = recall_per_class[i]
+
+        log.debug(f"evaluate_classifier: {results}")
+        return results
             
 
         log.debug(f"evaluate_classifier: {results}")
@@ -318,7 +306,7 @@ def evaluate_estimator(
                 # If a new metric (e.g., per-class) appears, initialize its result array.
                 if metric not in results:
                     results[metric] = np.zeros(n_folds)
-                results[metric][indx] = scores[metric]
+                results[metric][indx] = np.array([scores[metric]])
     
             indx += 1
 
