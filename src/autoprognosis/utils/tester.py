@@ -181,16 +181,6 @@ class classifier_metrics:
                 results[f"precision_class_{class_label}"] = precision_per_class[i]
                 results[f"recall_class_{class_label}"] = recall_per_class[i]
 
-                # Add new metric names to supported list if they don't exist
-                new_metrics = [
-                    f"f1_score_class_{class_label}",
-                    f"precision_class_{class_label}",
-                    f"recall_class_{class_label}"
-                ]
-                for new_metric in new_metrics:
-                    if new_metric not in clf_supported_metrics:
-                        clf_supported_metrics.append(new_metric)
-
         else:
             # Calculate non-averaged F1, precision, and recall for binary task
             f1 = f1_score(y_test, y_pred, average=None, zero_division=0)
@@ -201,12 +191,6 @@ class classifier_metrics:
             results["f1_score"] = f1
             results["precision"] = precision
             results["recall"] = recall
-
-            # Add metric names to supported list if they don't exist
-            new_metrics = ["f1_score", "precision", "recall"]
-            for new_metric in new_metrics:
-                if new_metric not in clf_supported_metrics:
-                    clf_supported_metrics.append(new_metric)
             
 
         log.debug(f"evaluate_classifier: {results}")
