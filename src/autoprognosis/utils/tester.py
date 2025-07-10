@@ -108,6 +108,11 @@ class classifier_metrics:
 
         results = {}
         y_pred = np.argmax(np.asarray(y_pred_proba), axis=1)
+
+        # Get unique classes
+        unique_classes = np.unique(y_test)
+        n_classes = len(unique_classes)
+        
         for metric in self.metrics:
             if metric == "aucprc":
                 results[metric] = self.average_precision_score(y_test, y_pred_proba)
@@ -159,6 +164,30 @@ class classifier_metrics:
                 results[metric] = matthews_corrcoef(y_test, y_pred)
             else:
                 raise ValueError(f"invalid metric {metric}")
+
+        # Add per-class metrics
+        if n_classes > 2:
+            # Calculate per-class F1, precision, and recall
+            f1_per_class = f1_score(y_test, y_pred, average=None, zero_division=0)
+            precision_per_class = precision_score(y_test, y_pred, average=None, zero_division=0)
+            recall_per_class = recall_score(y_test, y_pred, average=None, zero_division=0)
+            
+            # Add per-class metrics to results
+            for i, class_label in enumerate(unique_classes):
+                results[f"f1_score_class_{class_label}"] = f1_per_class[i]
+                results[f"precision_class_{class_label}"] = precision_per_class[i]
+                results[f"recall_class_{class_label}"] = recall_per_class[i]
+
+        elif n_classes == 1:
+            # Calculate non-averaged F1, precision, and recall for binary task
+            f1 = f1_score(y_test, y_pred, average=None, zero_division=0)
+            precision = precision_score(y_test, y_pred, average=None, zero_division=0)
+            recall = recall_score(y_test, y_pred, average=None, zero_division=0)
+            
+            # Add non-averaged metrics to results
+            results["f1_score"] = f1
+            results["precision"] = precision
+            results["recall"] = recall
 
         log.debug(f"evaluate_classifier: {results}")
         return results
