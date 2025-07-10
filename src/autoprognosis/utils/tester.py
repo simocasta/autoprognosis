@@ -289,10 +289,6 @@ def evaluate_estimator(
     # Special handling for n_folds=1 (no cross-validation)
     if n_folds == 1:
         log.debug("n_folds=1: Evaluating on training data without cross-validation")
-
-        # Initialize results with single values
-        for metric in clf_supported_metrics:
-            results[metric] = np.zeros(1)
                
         if pretrained:
             model = copy.deepcopy(estimator)
@@ -304,7 +300,7 @@ def evaluate_estimator(
         scores = evaluator.score_proba(Y, preds)
         
         for metric in scores:
-            results[metric][0] = scores[metric]
+            results[metric] = np.array([scores[metric]])
     
     else:
         # Original cross-validation logic for n_folds >= 2
@@ -335,6 +331,9 @@ def evaluate_estimator(
     
             scores = evaluator.score_proba(Y_test, preds)
             for metric in scores:
+                # If a new metric (e.g., per-class) appears, initialize its result array.
+                if metric not in results:
+                    results[metric] = np.zeros(n_folds)
                 results[metric][indx] = scores[metric]
     
             indx += 1
