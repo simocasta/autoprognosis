@@ -103,6 +103,9 @@ class classifier_metrics:
     def score_proba(
         self, y_test: np.ndarray, y_pred_proba: np.ndarray
     ) -> Dict[str, float]:
+        
+        global clf_supported_metrics  # Declare intent to modify the global variable
+        
         if y_test is None or y_pred_proba is None:
             raise RuntimeError("Invalid input for score_proba")
 
@@ -178,8 +181,15 @@ class classifier_metrics:
                 results[f"precision_class_{class_label}"] = precision_per_class[i]
                 results[f"recall_class_{class_label}"] = recall_per_class[i]
 
-                # Add metric to clf_supported_metrics
-                clf_supported_metrics += [f"f1_score_class_{class_label}", f"precision_class_{class_label}", f"recall_class_{class_label}"]
+                # Add new metric names to supported list if they don't exist
+                new_metrics = [
+                    f"f1_score_class_{class_label}",
+                    f"precision_class_{class_label}",
+                    f"recall_class_{class_label}"
+                ]
+                for new_metric in new_metrics:
+                    if new_metric not in clf_supported_metrics:
+                        clf_supported_metrics.append(new_metric)
 
         else:
             # Calculate non-averaged F1, precision, and recall for binary task
@@ -192,8 +202,11 @@ class classifier_metrics:
             results["precision"] = precision
             results["recall"] = recall
 
-            # Add metric to clf_supported_metrics
-            clf_supported_metrics += ["f1_score", "precision", "recall"]
+            # Add metric names to supported list if they don't exist
+            new_metrics = ["f1_score", "precision", "recall"]
+            for new_metric in new_metrics:
+                if new_metric not in clf_supported_metrics:
+                    clf_supported_metrics.append(new_metric)
             
 
         log.debug(f"evaluate_classifier: {results}")
