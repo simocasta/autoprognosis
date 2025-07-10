@@ -9,6 +9,7 @@ from pydantic import validate_arguments
 from sklearn.metrics import (
     accuracy_score,
     cohen_kappa_score,
+    confusion_matrix,  # NEW IMPORT
     f1_score,
     matthews_corrcoef,
     mean_absolute_error,
@@ -39,22 +40,40 @@ from autoprognosis.utils.metrics import (
 from autoprognosis.utils.risk_estimation import generate_dataset_for_horizon
 
 clf_supported_metrics = [
+    # probability‑threshold‑independent
     "aucroc",
     "aucprc",
+    # overall accuracy & agreement
     "accuracy",
+    "kappa",
+    "kappa_quadratic",
+    "mcc",
+    # F‑scores
     "f1_score_micro",
     "f1_score_macro",
     "f1_score_weighted",
-    "kappa",
-    "kappa_quadratic",
+    # Precision
     "precision_micro",
     "precision_macro",
     "precision_weighted",
+    # Recall / Sensitivity
     "recall_micro",
     "recall_macro",
     "recall_weighted",
-    "mcc",
+    # NEW – Specificity (TN rate)
+    "specificity_micro",
+    "specificity_macro",
+    "specificity_weighted",
+    # NEW – Negative predictive value
+    "npv_micro",
+    "npv_macro",
+    "npv_weighted",
+    # NEW – Negative likelihood ratio
+    "lr_minus_micro",
+    "lr_minus_macro",
+    "lr_minus_weighted",
 ]
+
 survival_supported_metrics = [
     "c_index",
     "brier_score",
@@ -103,83 +122,133 @@ class classifier_metrics:
     def score_proba(
         self, y_test: np.ndarray, y_pred_proba: np.ndarray
     ) -> Dict[str, float]:
+        """Return the requested metrics for one validation fold."""
         if y_test is None or y_pred_proba is None:
             raise RuntimeError("Invalid input for score_proba")
 
-        results = {}
+        results: Dict[str, float] = {}
         y_pred = np.argmax(np.asarray(y_pred_proba), axis=1)
-        
-        for metric in self.metrics:
-            if metric == "aucprc":
-                results[metric] = self.average_precision_score(y_test, y_pred_proba)
-            elif metric == "aucroc":
-                results[metric] = self.roc_auc_score(y_test, y_pred_proba)
-            elif metric == "accuracy":
-                results[metric] = accuracy_score(y_test, y_pred)
-            elif metric == "f1_score_micro":
-                results[metric] = f1_score(
-                    y_test, y_pred, average="micro", zero_division=0
-                )
-            elif metric == "f1_score_macro":
-                results[metric] = f1_score(
-                    y_test, y_pred, average="macro", zero_division=0
-                )
-            elif metric == "f1_score_weighted":
-                results[metric] = f1_score(
-                    y_test, y_pred, average="weighted", zero_division=0
-                )
-            elif metric == "kappa":
-                results[metric] = cohen_kappa_score(y_test, y_pred)
-            elif metric == "kappa_quadratic":
-                results[metric] = cohen_kappa_score(y_test, y_pred, weights="quadratic")
-            elif metric == "recall_micro":
-                results[metric] = recall_score(
-                    y_test, y_pred, average="micro", zero_division=0
-                )
-            elif metric == "recall_macro":
-                results[metric] = recall_score(
-                    y_test, y_pred, average="macro", zero_division=0
-                )
-            elif metric == "recall_weighted":
-                results[metric] = recall_score(
-                    y_test, y_pred, average="weighted", zero_division=0
-                )
-            elif metric == "precision_micro":
-                results[metric] = precision_score(
-                    y_test, y_pred, average="micro", zero_division=0
-                )
-            elif metric == "precision_macro":
-                results[metric] = precision_score(
-                    y_test, y_pred, average="macro", zero_division=0
-                )
-            elif metric == "precision_weighted":
-                results[metric] = precision_score(
-                    y_test, y_pred, average="weighted", zero_division=0
-                )
-            elif metric == "mcc":
-                results[metric] = matthews_corrcoef(y_test, y_pred)
-            else:
-                raise ValueError(f"invalid metric {metric}")
 
-        # Add per-class metrics
+        # ------------------------------------------------------------------
+        # quick helpers already in sklearn
+        # ------------------------------------------------------------------
+        base_metric_handlers = {
+            "aucprc": lambda: self.average_precision_score(y_test, y_pred_proba),
+            "aucroc": lambda: self.roc_auc_score(y_test, y_pred_proba),
+            "accuracy": lambda: accuracy_score(y_test, y_pred),
+            "f1_score_micro": lambda: f1_score(y_test, y_pred, average="micro", zero_division=0),
+            "f1_score_macro": lambda: f1_score(y_test, y_pred, average="macro", zero_division=0),
+            "f1_score_weighted": lambda: f1_score(y_test, y_pred, average="weighted", zero_division=0),
+            "kappa": lambda: cohen_kappa_score(y_test, y_pred),
+            "kappa_quadratic": lambda: cohen_kappa_score(y_test, y_pred, weights="quadratic"),
+            "recall_micro": lambda: recall_score(y_test, y_pred, average="micro", zero_division=0),
+            "recall_macro": lambda: recall_score(y_test, y_pred, average="macro", zero_division=0),
+            "recall_weighted": lambda: recall_score(y_test, y_pred, average="weighted", zero_division=0),
+            "precision_micro": lambda: precision_score(y_test, y_pred, average="micro", zero_division=0),
+            "precision_macro": lambda: precision_score(y_test, y_pred, average="macro", zero_division=0),
+            "precision_weighted": lambda: precision_score(y_test, y_pred, average="weighted", zero_division=0),
+            "mcc": lambda: matthews_corrcoef(y_test, y_pred),
+        }
+
+        # compute simple metrics first
+        for metric in self.metrics:
+            if metric in base_metric_handlers:
+                results[metric] = base_metric_handlers[metric]()
+
+        # ------------------------------------------------------------------
+        # confusion‑matrix‑based quantities (specificity, NPV, LR‑)
+        # ------------------------------------------------------------------
         unique_classes = np.unique(y_test)
-        
-        f1_per_class = f1_score(y_test, y_pred, average=None, zero_division=0)
-        precision_per_class = precision_score(
-            y_test, y_pred, average=None, zero_division=0
-        )
+        cm = confusion_matrix(y_test, y_pred, labels=unique_classes)
+        n_classes = len(unique_classes)
+
+        # per‑class containers
+        specificity_per_class: List[float] = []
+        npv_per_class: List[float] = []
+        lr_minus_per_class: List[float] = []
+
+        # we have already got per‑class recall (sensitivity)
         recall_per_class = recall_score(y_test, y_pred, average=None, zero_division=0)
 
-        # Assign scores for each class present in the fold to a unique key.
-        # `unique_classes` provides the correct labels for the scores returned by `average=None`.
+        # class supports (for weighted averages)
+        support = cm.sum(axis=1)
+        total_support: int = int(support.sum())
+
+        for i in range(n_classes):
+            tp = int(cm[i, i])
+            fp = int(cm[:, i].sum() - tp)
+            fn = int(cm[i, :].sum() - tp)
+            tn = int(cm.sum() - (tp + fp + fn))
+
+            # guard against zero division
+            spec = tn / (tn + fp) if (tn + fp) > 0 else 0.0
+            npv = tn / (tn + fn) if (tn + fn) > 0 else 0.0
+            lr_minus = ((1 - recall_per_class[i]) / spec) if spec > 0 else np.inf
+
+            specificity_per_class.append(spec)
+            npv_per_class.append(npv)
+            lr_minus_per_class.append(lr_minus)
+
+            # per‑class outputs requested?
+            class_label = unique_classes[i]
+            results[f"specificity_class_{class_label}"] = spec
+            results[f"npv_class_{class_label}"] = npv
+            results[f"lr_minus_class_{class_label}"] = lr_minus
+
+        # ---------------- aggregated (macro / weighted) ------------------
+        specificity_macro = float(np.mean(specificity_per_class))
+        npv_macro = float(np.mean(npv_per_class))
+        lr_minus_macro = float(np.mean(lr_minus_per_class))
+
+        specificity_weighted = (
+            float(np.average(specificity_per_class, weights=support)) if total_support > 0 else 0.0
+        )
+        npv_weighted = (
+            float(np.average(npv_per_class, weights=support)) if total_support > 0 else 0.0
+        )
+        lr_minus_weighted = (
+            float(np.average(lr_minus_per_class, weights=support)) if total_support > 0 else np.inf
+        )
+
+        # ---------------- aggregated (micro) -----------------------------
+        tp_global = int(np.trace(cm))
+        fp_global = int(cm.sum(axis=0).sum() - tp_global)
+        fn_global = int(cm.sum(axis=1).sum() - tp_global)
+        tn_global = int(cm.sum() - (tp_global + fp_global + fn_global))
+
+        specificity_micro = tn_global / (tn_global + fp_global) if (tn_global + fp_global) > 0 else 0.0
+        npv_micro = tn_global / (tn_global + fn_global) if (tn_global + fn_global) > 0 else 0.0
+        sens_micro = tp_global / (tp_global + fn_global) if (tp_global + fn_global) > 0 else 0.0
+        lr_minus_micro = ((1 - sens_micro) / specificity_micro) if specificity_micro > 0 else np.inf
+
+        # ------------------------------------------------------------------
+        # add aggregated results if they were requested
+        # ------------------------------------------------------------------
+        aggregated_values = {
+            "specificity_micro": specificity_micro,
+            "specificity_macro": specificity_macro,
+            "specificity_weighted": specificity_weighted,
+            "npv_micro": npv_micro,
+            "npv_macro": npv_macro,
+            "npv_weighted": npv_weighted,
+            "lr_minus_micro": lr_minus_micro,
+            "lr_minus_macro": lr_minus_macro,
+            "lr_minus_weighted": lr_minus_weighted,
+        }
+        for metric, value in aggregated_values.items():
+            if metric in self.metrics:
+                results[metric] = value
+
+        # ------------------------------------------------------------------
+        # legacy per‑class F‑scores / precision / recall already required
+        # ------------------------------------------------------------------
+        f1_per_class = f1_score(y_test, y_pred, average=None, zero_division=0)
+        precision_per_class = precision_score(y_test, y_pred, average=None, zero_division=0)
+
         for i, class_label in enumerate(unique_classes):
             results[f"f1_score_class_{class_label}"] = f1_per_class[i]
             results[f"precision_class_{class_label}"] = precision_per_class[i]
             results[f"recall_class_{class_label}"] = recall_per_class[i]
-
-        log.debug(f"evaluate_classifier: {results}")
-        return results
-            
 
         log.debug(f"evaluate_classifier: {results}")
         return results
