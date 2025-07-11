@@ -130,15 +130,16 @@ class classifier_metrics:
         results: Dict[str, float] = {}
         
         # Check if binary classification
-        n_classes = y_pred_proba.shape[1]
+        y_pred_proba_array = np.asarray(y_pred_proba)
+        n_classes = y_pred_proba_array.shape[1]
         is_binary = n_classes == 2
         
         if is_binary:
             # For binary classification, use probability threshold
-            y_pred = (y_pred_proba[:, 1] >= self.probability_threshold).astype(int)
+            y_pred = (y_pred_proba_array[:, 1] >= self.probability_threshold).astype(int)
         else:
             # For multiclass, use argmax as before
-            y_pred = np.argmax(np.asarray(y_pred_proba), axis=1)
+            y_pred = np.argmax(y_pred_proba_array, axis=1)
 
         # ------------------------------------------------------------------
         # quick helpers already in sklearn
