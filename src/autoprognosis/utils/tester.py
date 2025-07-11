@@ -110,11 +110,12 @@ class classifier_metrics:
                 - "mcc": The Matthews correlation coefficient is used in machine learning as a measure of the quality of binary and multiclass classifications. It takes into account true and false positives and negatives and is generally regarded as a balanced measure which can be used even if the classes are of very different sizes.
     """
 
-    def __init__(self, metric: Union[str, list] = clf_supported_metrics) -> None:
+    def __init__(self, metric: Union[str, list] = clf_supported_metrics, probability_threshold: float = 0.5) -> None:
         if isinstance(metric, str):
             self.metrics = [metric]
         else:
             self.metrics = metric
+        self.probability_threshold = probability_threshold
 
     def get_metric(self) -> Union[str, list]:
         return self.metrics
@@ -127,7 +128,17 @@ class classifier_metrics:
             raise RuntimeError("Invalid input for score_proba")
 
         results: Dict[str, float] = {}
-        y_pred = np.argmax(np.asarray(y_pred_proba), axis=1)
+        
+        # Check if binary classification
+        n_classes = y_pred_proba.shape[1]
+        is_binary = n_classes == 2
+        
+        if is_binary:
+            # For binary classification, use probability threshold
+            y_pred = (y_pred_proba[:, 1] >= self.probability_threshold).astype(int)
+        else:
+            # For multiclass, use argmax as before
+            y_pred = np.argmax(np.asarray(y_pred_proba), axis=1)
 
         # ------------------------------------------------------------------
         # quick helpers already in sklearn
@@ -272,6 +283,7 @@ def evaluate_estimator(
     seed: int = 0,
     pretrained: bool = False,
     group_ids: Optional[pd.Series] = None,
+    probability_threshold: float = 0.5,
     *args: Any,
     **kwargs: Any,
 ) -> Dict:
@@ -292,6 +304,9 @@ def evaluate_estimator(
             If the estimator was already trained or not.
         group_ids: pd.Series
             The group_ids to use for stratified cross-validation
+        probability_threshold: float
+            The probability threshold for binary classification. Default is 0.5.
+            Only used when the task is binary classification.
 
     Returns:
         Dict containing "raw" and "str" nodes. The "str" node contains prettified metrics, while the raw metrics includes tuples of form (`mean`, `std`) for each metric.
@@ -302,7 +317,7 @@ def evaluate_estimator(
             - "f1_score_micro": F1 score is a harmonic mean of the precision and recall. This version uses the "micro" average: calculate metrics globally by counting the total true positives, false negatives and false positives.
             - "f1_score_macro": F1 score is a harmonic mean of the precision and recall. This version uses the "macro" average: calculate metrics for each label, and find their unweighted mean. This does not take label imbalance into account.
             - "f1_score_weighted": F1 score is a harmonic mean of the precision and recall. This version uses the "weighted" average: Calculate metrics for each label, and find their average weighted by support (the number of true instances for each label).
-            - "kappa":  computes Cohen’s kappa, a score that expresses the level of agreement between two annotators on a classification problem.
+            - "kappa":  computes Cohen's kappa, a score that expresses the level of agreement between two annotators on a classification problem.
             - "precision_micro": Precision is defined as the number of true positives over the number of true positives plus the number of false positives. This version(micro) calculates metrics globally by counting the total true positives.
             - "precision_macro": Precision is defined as the number of true positives over the number of true positives plus the number of false positives. This version(macro) calculates metrics for each label, and finds their unweighted mean.
             - "precision_weighted": Precision is defined as the number of true positives over the number of true positives plus the number of false positives. This version(weighted) calculates metrics for each label, and find their average weighted by support.
@@ -325,7 +340,7 @@ def evaluate_estimator(
     log.debug(f"evaluate_estimator shape x:{X.shape} y:{Y.shape}")
 
     results = {}
-    evaluator = classifier_metrics()
+    evaluator = classifier_metrics(probability_threshold=probability_threshold)
     
     # Special handling for n_folds=1 (no cross-validation)
     if n_folds == 1:
@@ -402,6 +417,7 @@ def evaluate_estimator_multiple_seeds(
     seeds: List[int] = [0, 1, 2],
     pretrained: bool = False,
     group_ids: Optional[pd.Series] = None,
+    probability_threshold: float = 0.5,
 ) -> Dict:
     """Helper for evaluating classifiers with multiple seeds.
 
@@ -420,6 +436,9 @@ def evaluate_estimator_multiple_seeds(
             If the estimator was already trained or not.
         group_ids: pd.Series
             The group_ids to use for stratified cross-validation
+        probability_threshold: float
+            The probability threshold for binary classification. Default is 0.5.
+            Only used when the task is binary classification.
 
     Returns:
         Dict containing "seeds", "agg" and "str" nodes. The "str" node contains the aggregated prettified metrics, while the raw metrics includes tuples of form (`mean`, `std`) for each metric. The "seeds" node contains the results for each random seed.
@@ -430,7 +449,7 @@ def evaluate_estimator_multiple_seeds(
             - "f1_score_micro": F1 score is a harmonic mean of the precision and recall. This version uses the "micro" average: calculate metrics globally by counting the total true positives, false negatives and false positives.
             - "f1_score_macro": F1 score is a harmonic mean of the precision and recall. This version uses the "macro" average: calculate metrics for each label, and find their unweighted mean. This does not take label imbalance into account.
             - "f1_score_weighted": F1 score is a harmonic mean of the precision and recall. This version uses the "weighted" average: Calculate metrics for each label, and find their average weighted by support (the number of true instances for each label).
-            - "kappa":  computes Cohen’s kappa, a score that expresses the level of agreement between two annotators on a classification problem.
+            - "kappa":  computes Cohen's kappa, a score that expresses the level of agreement between two annotators on a classification problem.
             - "precision_micro": Precision is defined as the number of true positives over the number of true positives plus the number of false positives. This version(micro) calculates metrics globally by counting the total true positives.
             - "precision_macro": Precision is defined as the number of true positives over the number of true positives plus the number of false positives. This version(macro) calculates metrics for each label, and finds their unweighted mean.
             - "precision_weighted": Precision is defined as the number of true positives over the number of true positives plus the number of false positives. This version(weighted) calculates metrics for each label, and find their average weighted by support.
@@ -460,6 +479,7 @@ def evaluate_estimator_multiple_seeds(
             seed=seed,
             pretrained=pretrained,
             group_ids=group_ids,
+            probability_threshold=probability_threshold,
         )
 
         results["seeds"][seed] = score["str"]
