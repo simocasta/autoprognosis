@@ -19,10 +19,26 @@ from autoprognosis.utils.third_party.metrics import brier_score, concordance_ind
 
 
 def get_y_pred_proba_hlpr(y_pred_proba: np.ndarray, nclasses: int) -> np.ndarray:
+    """Normalise the shape of probability predictions.
+
+    For binary problems it returns a 1‑D vector containing the
+    probability of the positive class, regardless of whether the
+    input arrives as shape (n,), (n, 1) or (n, 2).
+
+    For multiclass problems the input array is returned unchanged.
+    """
+    y_pred_proba = np.asarray(y_pred_proba)
+
     if nclasses == 2:
-        if len(y_pred_proba.shape) < 2:
+        # Already flattened.
+        if y_pred_proba.ndim == 1:
             return y_pred_proba
 
+        # (n, 1) -> flatten
+        if y_pred_proba.shape[1] == 1:
+            return y_pred_proba.ravel()
+
+        # (n, 2) -> keep positive class column (index 1)
         if y_pred_proba.shape[1] == 2:
             return y_pred_proba[:, 1]
 
