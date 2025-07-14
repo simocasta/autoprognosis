@@ -485,7 +485,7 @@ def evaluate_estimator_multiple_seeds(
 
         results["seeds"][seed] = score["str"]
         for metric in score["raw"]:
-            repeats[metric].append(score["raw"][metric][0])
+            repeats.setdefault(metric, []).append(score["raw"][metric][0])
 
     for metric in repeats:
         output_clf = generate_score(repeats[metric])
