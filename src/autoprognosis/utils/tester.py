@@ -72,6 +72,10 @@ clf_supported_metrics = [
     "lr_minus_micro",
     "lr_minus_macro",
     "lr_minus_weighted",
+    # NEW – Positive likelihood ratio
+    "lr_plus_micro",
+    "lr_plus_macro",
+    "lr_plus_weighted",
 ]
 
 survival_supported_metrics = [
@@ -178,6 +182,7 @@ class classifier_metrics:
         specificity_per_class: List[float] = []
         npv_per_class: List[float] = []
         lr_minus_per_class: List[float] = []
+        lr_plus_per_class: List[float] = []
 
         # we have already got per‑class recall (sensitivity)
         recall_per_class = recall_score(y_test, y_pred, average=None, zero_division=0)
@@ -196,21 +201,25 @@ class classifier_metrics:
             spec = tn / (tn + fp) if (tn + fp) > 0 else 0.0
             npv = tn / (tn + fn) if (tn + fn) > 0 else 0.0
             lr_minus = ((1 - recall_per_class[i]) / spec) if spec > 0 else np.inf
+            lr_plus = (recall_per_class[i] / (1 - spec)) if (1 - spec) > 0 else np.inf
 
             specificity_per_class.append(spec)
             npv_per_class.append(npv)
             lr_minus_per_class.append(lr_minus)
+            lr_plus_per_class.append(lr_plus)
 
             # per‑class outputs requested?
             class_label = unique_classes[i]
             results[f"specificity_class_{class_label}"] = spec
             results[f"npv_class_{class_label}"] = npv
             results[f"lr_minus_class_{class_label}"] = lr_minus
+            results[f"lr_plus_class_{class_label}"] = lr_plus
 
         # ---------------- aggregated (macro / weighted) ------------------
         specificity_macro = float(np.mean(specificity_per_class))
         npv_macro = float(np.mean(npv_per_class))
         lr_minus_macro = float(np.mean(lr_minus_per_class))
+        lr_plus_macro = float(np.mean(lr_plus_per_class))
 
         specificity_weighted = (
             float(np.average(specificity_per_class, weights=support)) if total_support > 0 else 0.0
@@ -220,6 +229,10 @@ class classifier_metrics:
         )
         lr_minus_weighted = (
             float(np.average(lr_minus_per_class, weights=support)) if total_support > 0 else np.inf
+        )
+
+        lr_plus_weighted = (
+            float(np.average(lr_plus_per_class, weights=support)) if total_support > 0 else np.inf
         )
 
         # ---------------- aggregated (micro) -----------------------------
@@ -232,6 +245,7 @@ class classifier_metrics:
         npv_micro = tn_global / (tn_global + fn_global) if (tn_global + fn_global) > 0 else 0.0
         sens_micro = tp_global / (tp_global + fn_global) if (tp_global + fn_global) > 0 else 0.0
         lr_minus_micro = ((1 - sens_micro) / specificity_micro) if specificity_micro > 0 else np.inf
+        lr_plus_micro = (sens_micro / (1 - specificity_micro)) if (1 - specificity_micro) > 0 else np.inf
 
         # ------------------------------------------------------------------
         # add aggregated results if they were requested
@@ -246,6 +260,9 @@ class classifier_metrics:
             "lr_minus_micro": lr_minus_micro,
             "lr_minus_macro": lr_minus_macro,
             "lr_minus_weighted": lr_minus_weighted,
+            "lr_plus_micro": lr_plus_micro,
+            "lr_plus_macro": lr_plus_macro,
+            "lr_plus_weighted": lr_plus_weighted,
         }
         for metric, value in aggregated_values.items():
             if metric in self.metrics:
