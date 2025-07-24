@@ -146,11 +146,11 @@ class Plugin(metaclass=ABCMeta):
 
     def fit_transform(self, X: pd.DataFrame, *args: Any, **kwargs: Any) -> pd.DataFrame:
         """Fit the model and transform the training data. Used by imputers and preprocessors."""
-        return pd.DataFrame(self.fit(X, *args, *kwargs).transform(X))
+        return pd.DataFrame(self.fit(X, *args, **kwargs).transform(X))
 
     def fit_predict(self, X: pd.DataFrame, *args: Any, **kwargs: Any) -> pd.DataFrame:
         """Fit the model and predict the training data. Used by predictors."""
-        return pd.DataFrame(self.fit(X, *args, *kwargs).predict(X))
+        return pd.DataFrame(self.fit(X, *args, **kwargs).predict(X))
 
     def _preprocess_training_data(self, X: pd.DataFrame) -> pd.DataFrame:
         """Encode the input"""
@@ -237,7 +237,7 @@ class Plugin(metaclass=ABCMeta):
             raise RuntimeError("Fit the model first")
         X = self._preprocess_inference_data(X)
         log.debug(f"Predicting using {self.fqdn()}, input shape = {X.shape}")
-        return self.output(self._predict(X, *args, *kwargs))
+        return self.output(self._predict(X, *args, **kwargs))
 
     @abstractmethod
     def _predict(self, X: pd.DataFrame, *args: Any, **kwargs: Any) -> pd.DataFrame:
