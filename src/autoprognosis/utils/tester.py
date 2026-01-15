@@ -8,6 +8,7 @@ import pandas as pd
 from pydantic import validate_arguments
 from sklearn.metrics import (
     accuracy_score,
+    average_precision_score,
     cohen_kappa_score,
     confusion_matrix,  # NEW IMPORT
     f1_score,
@@ -19,6 +20,7 @@ from sklearn.metrics import (
     recall_score,
     roc_auc_score,
 )
+from sklearn.preprocessing import label_binarize
 from sklearn.model_selection import (
     GroupKFold,
     KFold,
@@ -40,9 +42,17 @@ from autoprognosis.utils.metrics import (
 from autoprognosis.utils.risk_estimation import generate_dataset_for_horizon
 
 clf_supported_metrics = [
-    # probability‑threshold‑independent
+    # probability‑threshold‑independent (legacy - micro for multiclass)
     "aucroc",
     "aucprc",
+    # AUCROC with explicit averaging
+    "aucroc_micro",
+    "aucroc_macro",
+    "aucroc_weighted",
+    # AUCPRC with explicit averaging
+    "aucprc_micro",
+    "aucprc_macro",
+    "aucprc_weighted",
     # overall accuracy & agreement
     "accuracy",
     "kappa",
@@ -95,23 +105,29 @@ class classifier_metrics:
     """Helper class for evaluating the performance of the classifier.
 
     Args:
-        metric: list, default=["aucroc", "aucprc", "accuracy", "f1_score_micro", "f1_score_macro", "f1_score_weighted",  "kappa", "precision_micro", "precision_macro", "precision_weighted", "recall_micro", "recall_macro", "recall_weighted",  "mcc",]
+        metric: list, default=clf_supported_metrics
             The type of metric to use for evaluation.
             Potential values:
-                - "aucroc" : the Area Under the Receiver Operating Characteristic Curve (ROC AUC) from prediction scores.
-                - "aucprc" : The average precision summarizes a precision-recall curve as the weighted mean of precisions achieved at each threshold, with the increase in recall from the previous threshold used as the weight.
+                - "aucroc" : (legacy) AUCROC - uses micro average for multiclass, for backward compatibility.
+                - "aucprc" : (legacy) AUCPRC - uses micro average for multiclass, for backward compatibility.
+                - "aucroc_micro": AUCROC with micro averaging (treats all samples equally).
+                - "aucroc_macro": AUCROC with macro averaging (unweighted mean across classes - treats all classes equally).
+                - "aucroc_weighted": AUCROC with weighted averaging (weighted by class support/prevalence).
+                - "aucprc_micro": AUCPRC with micro averaging (treats all samples equally).
+                - "aucprc_macro": AUCPRC with macro averaging (unweighted mean across classes - treats all classes equally).
+                - "aucprc_weighted": AUCPRC with weighted averaging (weighted by class support/prevalence).
                 - "accuracy" : Accuracy classification score.
-                - "f1_score_micro": F1 score is a harmonic mean of the precision and recall. This version uses the "micro" average: calculate metrics globally by counting the total true positives, false negatives and false positives.
-                - "f1_score_macro": F1 score is a harmonic mean of the precision and recall. This version uses the "macro" average: calculate metrics for each label, and find their unweighted mean. This does not take label imbalance into account.
-                - "f1_score_weighted": F1 score is a harmonic mean of the precision and recall. This version uses the "weighted" average: Calculate metrics for each label, and find their average weighted by support (the number of true instances for each label).
-                - "kappa", "kappa_quadratic":  computes Cohen’s kappa, a score that expresses the level of agreement between two annotators on a classification problem.
-                - "precision_micro": Precision is defined as the number of true positives over the number of true positives plus the number of false positives. This version(micro) calculates metrics globally by counting the total true positives.
-                - "precision_macro": Precision is defined as the number of true positives over the number of true positives plus the number of false positives. This version(macro) calculates metrics for each label, and finds their unweighted mean.
-                - "precision_weighted": Precision is defined as the number of true positives over the number of true positives plus the number of false positives. This version(weighted) calculates metrics for each label, and find their average weighted by support.
-                - "recall_micro": Recall is defined as the number of true positives over the number of true positives plus the number of false negatives. This version(micro) calculates metrics globally by counting the total true positives.
-                - "recall_macro": Recall is defined as the number of true positives over the number of true positives plus the number of false negatives. This version(macro) calculates metrics for each label, and finds their unweighted mean.
-                - "recall_weighted": Recall is defined as the number of true positives over the number of true positives plus the number of false negatives. This version(weighted) calculates metrics for each label, and find their average weighted by support.
-                - "mcc": The Matthews correlation coefficient is used in machine learning as a measure of the quality of binary and multiclass classifications. It takes into account true and false positives and negatives and is generally regarded as a balanced measure which can be used even if the classes are of very different sizes.
+                - "f1_score_micro": F1 score with micro averaging.
+                - "f1_score_macro": F1 score with macro averaging.
+                - "f1_score_weighted": F1 score with weighted averaging.
+                - "kappa", "kappa_quadratic":  Cohen's kappa score.
+                - "precision_micro", "precision_macro", "precision_weighted": Precision with different averaging.
+                - "recall_micro", "recall_macro", "recall_weighted": Recall with different averaging.
+                - "specificity_micro", "specificity_macro", "specificity_weighted": Specificity (true negative rate).
+                - "npv_micro", "npv_macro", "npv_weighted": Negative predictive value.
+                - "lr_minus_micro", "lr_minus_macro", "lr_minus_weighted": Negative likelihood ratio.
+                - "lr_plus_micro", "lr_plus_macro", "lr_plus_weighted": Positive likelihood ratio.
+                - "mcc": Matthews correlation coefficient.
     """
 
     def __init__(self, metric: Union[str, list] = clf_supported_metrics, probability_threshold: float = 0.5) -> None:
@@ -149,8 +165,18 @@ class classifier_metrics:
         # quick helpers already in sklearn
         # ------------------------------------------------------------------
         base_metric_handlers = {
+            # Legacy aucroc/aucprc (micro for multiclass, for backward compatibility)
             "aucprc": lambda: self.average_precision_score(y_test, y_pred_proba),
             "aucroc": lambda: self.roc_auc_score(y_test, y_pred_proba),
+            # AUCROC with explicit averaging
+            "aucroc_micro": lambda: self._compute_aucroc(y_test, y_pred_proba, "micro"),
+            "aucroc_macro": lambda: self._compute_aucroc(y_test, y_pred_proba, "macro"),
+            "aucroc_weighted": lambda: self._compute_aucroc(y_test, y_pred_proba, "weighted"),
+            # AUCPRC with explicit averaging
+            "aucprc_micro": lambda: self._compute_aucprc(y_test, y_pred_proba, "micro"),
+            "aucprc_macro": lambda: self._compute_aucprc(y_test, y_pred_proba, "macro"),
+            "aucprc_weighted": lambda: self._compute_aucprc(y_test, y_pred_proba, "weighted"),
+            # Other metrics
             "accuracy": lambda: accuracy_score(y_test, y_pred),
             "f1_score_micro": lambda: f1_score(y_test, y_pred, average="micro", zero_division=0),
             "f1_score_macro": lambda: f1_score(y_test, y_pred, average="macro", zero_division=0),
@@ -291,6 +317,62 @@ class classifier_metrics:
 
         return evaluate_auc(y_test, y_pred_proba)[1]
 
+    def _compute_aucroc(
+        self, y_test: np.ndarray, y_pred_proba: np.ndarray, average: str
+    ) -> float:
+        """Compute AUCROC with specified averaging method.
+
+        Args:
+            y_test: True labels
+            y_pred_proba: Predicted probabilities (n_samples, n_classes)
+            average: "micro", "macro", or "weighted"
+
+        Returns:
+            AUCROC score
+        """
+        y_test = np.asarray(y_test)
+        y_pred_proba = np.asarray(y_pred_proba)
+        n_classes = len(np.unique(y_test))
+
+        if n_classes == 2:
+            # Binary: averaging doesn't apply, use positive class probability
+            if y_pred_proba.ndim == 2 and y_pred_proba.shape[1] == 2:
+                y_pred_proba = y_pred_proba[:, 1]
+            return roc_auc_score(y_test, y_pred_proba)
+
+        # Multiclass: use OvR strategy with specified averaging
+        return roc_auc_score(
+            y_test, y_pred_proba, average=average, multi_class="ovr"
+        )
+
+    def _compute_aucprc(
+        self, y_test: np.ndarray, y_pred_proba: np.ndarray, average: str
+    ) -> float:
+        """Compute AUCPRC (Average Precision) with specified averaging method.
+
+        Args:
+            y_test: True labels
+            y_pred_proba: Predicted probabilities (n_samples, n_classes)
+            average: "micro", "macro", or "weighted"
+
+        Returns:
+            AUCPRC score
+        """
+        y_test = np.asarray(y_test)
+        y_pred_proba = np.asarray(y_pred_proba)
+        classes = sorted(np.unique(y_test))
+        n_classes = len(classes)
+
+        if n_classes == 2:
+            # Binary: averaging doesn't apply, use positive class probability
+            if y_pred_proba.ndim == 2 and y_pred_proba.shape[1] == 2:
+                y_pred_proba = y_pred_proba[:, 1]
+            return average_precision_score(y_test, y_pred_proba)
+
+        # Multiclass: binarize labels and compute with specified averaging
+        y_test_bin = label_binarize(y_test, classes=classes)
+        return average_precision_score(y_test_bin, y_pred_proba, average=average)
+
 
 @validate_arguments(config=dict(arbitrary_types_allowed=True))
 def evaluate_estimator(
@@ -327,22 +409,14 @@ def evaluate_estimator(
             Only used when the task is binary classification.
 
     Returns:
-        Dict containing "raw" and "str" nodes. The "str" node contains prettified metrics, while the raw metrics includes tuples of form (`mean`, `std`) for each metric.
-        Both "raw" and "str" nodes contain the following metrics:
-            - "aucroc" : the Area Under the Receiver Operating Characteristic Curve (ROC AUC) from prediction scores.
-            - "aucprc" : The average precision summarizes a precision-recall curve as the weighted mean of precisions achieved at each threshold, with the increase in recall from the previous threshold used as the weight.
-            - "accuracy" : Accuracy classification score.
-            - "f1_score_micro": F1 score is a harmonic mean of the precision and recall. This version uses the "micro" average: calculate metrics globally by counting the total true positives, false negatives and false positives.
-            - "f1_score_macro": F1 score is a harmonic mean of the precision and recall. This version uses the "macro" average: calculate metrics for each label, and find their unweighted mean. This does not take label imbalance into account.
-            - "f1_score_weighted": F1 score is a harmonic mean of the precision and recall. This version uses the "weighted" average: Calculate metrics for each label, and find their average weighted by support (the number of true instances for each label).
-            - "kappa":  computes Cohen's kappa, a score that expresses the level of agreement between two annotators on a classification problem.
-            - "precision_micro": Precision is defined as the number of true positives over the number of true positives plus the number of false positives. This version(micro) calculates metrics globally by counting the total true positives.
-            - "precision_macro": Precision is defined as the number of true positives over the number of true positives plus the number of false positives. This version(macro) calculates metrics for each label, and finds their unweighted mean.
-            - "precision_weighted": Precision is defined as the number of true positives over the number of true positives plus the number of false positives. This version(weighted) calculates metrics for each label, and find their average weighted by support.
-            - "recall_micro": Recall is defined as the number of true positives over the number of true positives plus the number of false negatives. This version(micro) calculates metrics globally by counting the total true positives.
-            - "recall_macro": Recall is defined as the number of true positives over the number of true positives plus the number of false negatives. This version(macro) calculates metrics for each label, and finds their unweighted mean.
-            - "recall_weighted": Recall is defined as the number of true positives over the number of true positives plus the number of false negatives. This version(weighted) calculates metrics for each label, and find their average weighted by support.
-            - "mcc": The Matthews correlation coefficient is used in machine learning as a measure of the quality of binary and multiclass classifications. It takes into account true and false positives and negatives and is generally regarded as a balanced measure which can be used even if the classes are of very different sizes.
+        Dict containing "raw" and "str" nodes. The "str" node contains prettified metrics,
+        while the raw metrics includes tuples of form (`mean`, `std`) for each metric.
+        See `clf_supported_metrics` for the full list. Key metrics include:
+            - "aucroc", "aucprc": Legacy metrics (micro average for multiclass).
+            - "aucroc_micro/macro/weighted", "aucprc_micro/macro/weighted": AUC metrics with explicit averaging.
+            - "accuracy", "f1_score_micro/macro/weighted", "kappa", "mcc"
+            - "precision_micro/macro/weighted", "recall_micro/macro/weighted"
+            - "specificity_micro/macro/weighted", "npv_micro/macro/weighted"
 
     """
     if n_folds < 1:
@@ -459,23 +533,14 @@ def evaluate_estimator_multiple_seeds(
             Only used when the task is binary classification.
 
     Returns:
-        Dict containing "seeds", "agg" and "str" nodes. The "str" node contains the aggregated prettified metrics, while the raw metrics includes tuples of form (`mean`, `std`) for each metric. The "seeds" node contains the results for each random seed.
-        Both "agg" and "str" nodes contain the following metrics:
-            - "aucroc" : the Area Under the Receiver Operating Characteristic Curve (ROC AUC) from prediction scores.
-            - "aucprc" : The average precision summarizes a precision-recall curve as the weighted mean of precisions achieved at each threshold, with the increase in recall from the previous threshold used as the weight.
-            - "accuracy" : Accuracy classification score.
-            - "f1_score_micro": F1 score is a harmonic mean of the precision and recall. This version uses the "micro" average: calculate metrics globally by counting the total true positives, false negatives and false positives.
-            - "f1_score_macro": F1 score is a harmonic mean of the precision and recall. This version uses the "macro" average: calculate metrics for each label, and find their unweighted mean. This does not take label imbalance into account.
-            - "f1_score_weighted": F1 score is a harmonic mean of the precision and recall. This version uses the "weighted" average: Calculate metrics for each label, and find their average weighted by support (the number of true instances for each label).
-            - "kappa":  computes Cohen's kappa, a score that expresses the level of agreement between two annotators on a classification problem.
-            - "precision_micro": Precision is defined as the number of true positives over the number of true positives plus the number of false positives. This version(micro) calculates metrics globally by counting the total true positives.
-            - "precision_macro": Precision is defined as the number of true positives over the number of true positives plus the number of false positives. This version(macro) calculates metrics for each label, and finds their unweighted mean.
-            - "precision_weighted": Precision is defined as the number of true positives over the number of true positives plus the number of false positives. This version(weighted) calculates metrics for each label, and find their average weighted by support.
-            - "recall_micro": Recall is defined as the number of true positives over the number of true positives plus the number of false negatives. This version(micro) calculates metrics globally by counting the total true positives.
-            - "recall_macro": Recall is defined as the number of true positives over the number of true positives plus the number of false negatives. This version(macro) calculates metrics for each label, and finds their unweighted mean.
-            - "recall_weighted": Recall is defined as the number of true positives over the number of true positives plus the number of false negatives. This version(weighted) calculates metrics for each label, and find their average weighted by support.
-            - "mcc": The Matthews correlation coefficient is used in machine learning as a measure of the quality of binary and multiclass classifications. It takes into account true and false positives and negatives and is generally regarded as a balanced measure which can be used even if the classes are of very different sizes.
-
+        Dict containing "seeds", "agg" and "str" nodes. The "str" node contains the aggregated
+        prettified metrics, while the raw metrics includes tuples of form (`mean`, `std`) for
+        each metric. The "seeds" node contains the results for each random seed.
+        See `clf_supported_metrics` for the full list. Key metrics include:
+            - "aucroc", "aucprc": Legacy metrics (micro average for multiclass).
+            - "aucroc_micro/macro/weighted", "aucprc_micro/macro/weighted": AUC metrics with explicit averaging.
+            - "accuracy", "f1_score_micro/macro/weighted", "kappa", "mcc"
+            - "precision_micro/macro/weighted", "recall_micro/macro/weighted"
 
     """
     results = {
