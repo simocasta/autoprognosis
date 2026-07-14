@@ -6,6 +6,7 @@ from typing import Any, List, Optional, Tuple
 # third party
 import numpy as np
 import pandas as pd
+from sklearn.model_selection import StratifiedShuffleSplit
 
 # autoprognosis absolute
 from autoprognosis.exceptions import StudyCancelled
@@ -53,6 +54,8 @@ class ClassifierStudy(Study):
             Available objective metrics:
                 - "aucroc" : the Area Under the Receiver Operating Characteristic Curve (ROC AUC) from prediction scores.
                 - "aucprc" : The average precision summarizes a precision-recall curve as the weighted mean of precisions achieved at each threshold, with the increase in recall from the previous threshold used as the weight.
+                - "aucroc_micro", "aucroc_macro", "aucroc_weighted": ROC AUC with an explicit multiclass averaging rule.
+                - "aucprc_micro", "aucprc_macro", "aucprc_weighted": Average precision with an explicit multiclass averaging rule.
                 - "accuracy" : Accuracy classification score.
                 - "f1_score_micro": F1 score is a harmonic mean of the precision and recall. This version uses the "micro" average: calculate metrics globally by counting the total true positives, false negatives and false positives.
                 - "f1_score_macro": F1 score is a harmonic mean of the precision and recall. This version uses the "macro" average: calculate metrics for each label, and find their unweighted mean. This does not take label imbalance into account.
@@ -216,14 +219,28 @@ class ClassifierStudy(Study):
         if sample_for_search:
             sample_size = min(len(self.Y), max_search_sample_size)
 
-            counts = self.Y.value_counts().to_dict()
-            weights = self.Y.apply(lambda s: counts[s])
-            self.search_Y = self.Y.sample(
-                sample_size, random_state=random_state, weights=weights
-            )
+            if sample_size == len(self.Y):
+                self.search_Y = self.Y.copy()
+            else:
+                splitter = StratifiedShuffleSplit(
+                    n_splits=1,
+                    train_size=sample_size,
+                    random_state=random_state,
+                )
+                try:
+                    search_positions, _ = next(splitter.split(self.X, self.Y))
+                    self.search_Y = self.Y.iloc[search_positions].copy()
+                except ValueError as exc:
+                    log.warning(
+                        "Stratified search subsampling was not possible; "
+                        f"falling back to an unweighted random sample: {exc}"
+                    )
+                    self.search_Y = self.Y.sample(
+                        sample_size, random_state=random_state
+                    )
             self.search_X = self.X.loc[self.search_Y.index].copy()
             self.search_group_ids = None
-            if self.group_ids:
+            if self.group_ids is not None:
                 self.search_group_ids = self.group_ids.loc[self.search_Y.index].copy()
         else:
             self.search_X = self.X.copy()

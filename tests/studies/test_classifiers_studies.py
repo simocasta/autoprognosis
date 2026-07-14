@@ -6,6 +6,7 @@ import sys
 # third party
 from helpers import MockHook
 import numpy as np
+import pandas as pd
 import pytest
 from sklearn.datasets import load_breast_cancer
 
@@ -14,6 +15,32 @@ from autoprognosis.exceptions import StudyCancelled
 from autoprognosis.studies.classifiers import ClassifierStudy
 from autoprognosis.utils.serialization import load_model_from_file
 from autoprognosis.utils.tester import evaluate_estimator
+
+
+def test_search_subsample_preserves_class_proportions(tmp_path: Path) -> None:
+    n_majority = 900
+    n_minority = 100
+    dataset = pd.DataFrame(
+        {
+            "feature": np.arange(n_majority + n_minority),
+            "target": [0] * n_majority + [1] * n_minority,
+        }
+    )
+
+    study = ClassifierStudy(
+        dataset=dataset,
+        target="target",
+        study_name="test_stratified_search_sample",
+        workspace=tmp_path,
+        sample_for_search=True,
+        max_search_sample_size=100,
+        classifiers=["logistic_regression"],
+        feature_scaling=["nop"],
+        feature_selection=["nop"],
+    )
+
+    counts = study.search_Y.value_counts().to_dict()
+    assert counts == {0: 90, 1: 10}
 
 
 @pytest.mark.skipif(sys.platform != "linux", reason="slow")

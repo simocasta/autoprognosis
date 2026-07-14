@@ -17,6 +17,12 @@ from autoprognosis.utils.tester import (
 clf_supported_metrics = [
     "aucroc",
     "aucprc",
+    "aucroc_micro",
+    "aucroc_macro",
+    "aucroc_weighted",
+    "aucprc_micro",
+    "aucprc_macro",
+    "aucprc_weighted",
     "accuracy",
     "f1_score_micro",
     "f1_score_macro",

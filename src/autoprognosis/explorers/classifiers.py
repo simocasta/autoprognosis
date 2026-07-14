@@ -39,6 +39,8 @@ class ClassifierSeeker:
             Available objective metrics:
                 - "aucroc" : the Area Under the Receiver Operating Characteristic Curve (ROC AUC) from prediction scores.
                 - "aucprc" : The average precision summarizes a precision-recall curve as the weighted mean of precisions achieved at each threshold, with the increase in recall from the previous threshold used as the weight.
+                - "aucroc_micro", "aucroc_macro", "aucroc_weighted": ROC AUC with an explicit multiclass averaging rule.
+                - "aucprc_micro", "aucprc_macro", "aucprc_weighted": Average precision with an explicit multiclass averaging rule.
                 - "accuracy" : Accuracy classification score.
                 - "f1_score_micro": F1 score is a harmonic mean of the precision and recall. This version uses the "micro" average: calculate metrics globally by counting the total true positives, false negatives and false positives.
                 - "f1_score_macro": F1 score is a harmonic mean of the precision and recall. This version uses the "macro" average: calculate metrics for each label, and find their unweighted mean. This does not take label imbalance into account.
@@ -143,6 +145,12 @@ class ClassifierSeeker:
         metrics = [
             "aucroc",
             "aucprc",
+            "aucroc_micro",
+            "aucroc_macro",
+            "aucroc_weighted",
+            "aucprc_micro",
+            "aucprc_macro",
+            "aucprc_weighted",
             "accuracy",
             "kappa",
             "f1_score_micro",

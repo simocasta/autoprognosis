@@ -55,6 +55,29 @@ def test_fails() -> None:
         ClassifierSeeker(study_name="test_classifiers", metric="invalid")
 
 
+@pytest.mark.parametrize(
+    "metric",
+    [
+        "aucroc_micro",
+        "aucroc_macro",
+        "aucroc_weighted",
+        "aucprc_micro",
+        "aucprc_macro",
+        "aucprc_weighted",
+    ],
+)
+def test_explicit_multiclass_auc_objectives_are_supported(metric: str) -> None:
+    seeker = ClassifierSeeker(
+        study_name="test_explicit_multiclass_auc_objectives",
+        metric=metric,
+        feature_scaling=["nop"],
+        feature_selection=["nop"],
+        classifiers=["logistic_regression"],
+    )
+
+    assert seeker.metric == metric
+
+
 @pytest.mark.skipif(sys.platform == "darwin", reason="slow")
 @pytest.mark.parametrize(
     "optimizer_type,group_id",
