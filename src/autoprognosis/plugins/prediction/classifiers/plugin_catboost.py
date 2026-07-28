@@ -9,6 +9,7 @@ import autoprognosis.plugins.core.params as params
 import autoprognosis.plugins.prediction.classifiers.base as base
 from autoprognosis.utils.pip import install
 import autoprognosis.utils.serialization as serialization
+from autoprognosis.utils.parallel import n_learner_jobs
 
 for retry in range(2):
     try:
@@ -90,6 +91,7 @@ class CatBoostPlugin(base.ClassifierPlugin):
             min_data_in_leaf=min_data_in_leaf,
             random_strength=random_strength,
             auto_class_weights="Balanced",
+            thread_count=n_learner_jobs(),
         )
 
     @staticmethod

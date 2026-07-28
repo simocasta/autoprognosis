@@ -12,6 +12,7 @@ from autoprognosis.plugins.prediction.classifiers.helper_calibration import (
 )
 from autoprognosis.utils.pip import install
 import autoprognosis.utils.serialization as serialization
+from autoprognosis.utils.parallel import n_learner_jobs
 
 for retry in range(2):
     try:
@@ -113,6 +114,7 @@ class LightGBMPlugin(base.ClassifierPlugin):
             min_child_samples=self.min_child_samples,
             random_state=self.random_state,
             boosting_type=self.boosting_type,
+            n_jobs=n_learner_jobs(),
         )
         self.model = calibrated_model(model, calibration)
 

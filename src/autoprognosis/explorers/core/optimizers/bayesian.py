@@ -112,8 +112,8 @@ class BayesianOptimizer:
         self,
         study_name: str,
         direction: str = "maximize",
-        load_if_exists: bool = True,
-        storage_type: str = "redis",
+        load_if_exists: bool = False,
+        storage_type: str = "none",
         patience: int = threshold,
     ) -> Tuple[optuna.Study, ParamRepeatPruner]:
         """Helper for creating a new study.
